@@ -21,16 +21,18 @@ class DataBaseSettings(CommonSettings):
     )
 
     USER: str = "root"
-    PASSWORD: str = "root"
+    PASSWORD: str = "root"  # noqa: S105
     HOST: str = "localhost"
     PORT: int = 5432
-    NAME: str = "test_db"
-    SCHEMA : str = "main_schema"
-    TEST_SCHEMA : str = "test_schema"
+    NAME: str = "dev_db"
+    SCHEMA: str = "main_schema"
+    TEST_SCHEMA: str = "test_schema"
 
     @property
-    def URL(self) -> str:
-        return f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
+    def URL(self) -> str:  # noqa: N802
+        return (
+            f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
+        )
 
 
 class EmailSettings(CommonSettings):
@@ -41,12 +43,12 @@ class EmailSettings(CommonSettings):
     HOST: str = "smtp.gmail.com"
     PORT: int = 587
     ENCRYPT: str = "TLS"
-    USER: str = "noreply.myhotelki@gmail.com"
-    PASSWORD: str = "bpiehprgfmzdfnkn"
+    USER: str
+    PASSWORD: str
 
 
 class Settings:
-    def __init__(self):
+    def __init__(self) -> None:
         self.app = AppSettings()
         self.db = DataBaseSettings()
 

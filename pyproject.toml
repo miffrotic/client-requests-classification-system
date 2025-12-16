@@ -22,6 +22,7 @@ dependencies = [
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
 
+
 [dependency-groups]
 lint = [
     "pre-commit (>=4.3.0,<5.0.0)",
@@ -36,11 +37,20 @@ dev = [
     { include-group = "test" }
 ]
 
+
 [tool.poetry]
 package-mode = false  # Disable package mode to avoid creating a package named after the project.
 
+
 [tool.ruff]
-exclude = [  # Exclude common directories that should not be linted and not formated.
+include = [        # Include common file's extensions that should be linted and formated. (Specified default values)
+    "*.py",
+    "*.pyi",
+    "*.pyw",
+    "*.ipynb",
+    "**/pyproject.toml",
+]
+exclude = [        # Exclude common directories that should not be linted and not formated. (Specified default values)
     ".bzr",
     ".direnv",
     ".eggs",
@@ -68,17 +78,18 @@ exclude = [  # Exclude common directories that should not be linted and not form
     "site-packages",
     "venv",
 ]
-line-length = 100         # Set maximum line length to 100 characters.
-indent-width = 4          # Set indentation width to 4 spaces.
-target-version = "py312"  # Target Python 3.12 for linting rules.
+line-length = 100  # Set maximum line length to 100 characters.
+indent-width = 4   # Set indentation width to 4 spaces.  (Specified default value)
+
 
 [tool.ruff.format]
-quote-style = "double"                  # Enforce double quotes for strings.
-indent-style = "space"                  # Use spaces for indentation.
-skip-magic-trailing-comma = true        # Skip adding trailing commas in multi-line constructs.
-line-ending = "auto"                    # Use the system's default line endings.
+quote-style = "double"                  # Enforce double quotes for strings.  (Specified default value)
+indent-style = "space"                  # Use spaces for indentation.  (Specified default value)
+skip-magic-trailing-comma = false       # Doesn't merge separated items in one line if it contains trailing comma and fits in one line.  (Specified default value)
+line-ending = "auto"                    # Use the system's default line endings.  (Specified default value)
 docstring-code-format = true            # Enable code formatting in docstrings.
-docstring-code-line-length = "dynamic"  # Set docstring code line length to dynamic based on context.
+docstring-code-line-length = "dynamic"  # Set docstring code line length formating.  (Specified default value for docstring-code-format = true)
+
 
 [tool.ruff.lint]
 select = [
@@ -176,9 +187,95 @@ ignore = [
     "PLW1514",  # (DON'T LIKE IT)             Insist to use encoding in open function
     "TRY300",   # (DON'T LIKE IT)             Insist to use else statement in try-except for returns
 ]
-fixable = ["ALL"]  # Enable all auto-fixable rules.
-unfixable = []     # No unfixable rules specified.
-dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"  # Allow variables that start with an underscore or double underscore as dummy variables.
+fixable = ["ALL"]  # Enable all auto-fixable rules.  (Specified default value)
+unfixable = []     # No unfixable rules specified.  (Specified default value)
+dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"  # Allow variables that start with an underscore or double underscore as dummy variables.  (Specified default value)
+
+
+[tool.ruff.lint.flake8-bugbear]
+extend-immutable-calls = [  # Allow to use fastapi functions as immutable in endpoints.
+    "fastapi.Depends",
+    "fastapi.Query",
+    "fastapi.Path",
+    "fastapi.Header",
+    "fastapi.Cookie",
+]
+
+
+[tool.ruff.lint.flake8-implicit-str-concat]
+allow-multiline = true  # Allow implicit string concatenation across multiple lines.  (Specified default value)
+
+
+[tool.ruff.lint.flake8-import-conventions.aliases]  # Specify conventional import aliases for commonly used libraries.  (Specified default values)
+altair = "alt"
+matplotlib = "mpl"
+"matplotlib.pyplot" = "plt"
+numpy = "np"
+"numpy.typing" = "npt"
+pandas = "pd"
+seaborn = "sns"
+tensorflow = "tf"
+tkinter = "tk"
+holoviews = "hv"
+panel = "pn"
+"plotly.express" = "px"
+polars = "pl"
+pyarrow = "pa"
+"xml.etree.ElementTree" = "ET"
+
+
+[tool.ruff.lint.flake8-pytest-style]
+parametrize-names-type = "tuple"       # Enforce using tuple for parametrize names. Example: @pytest.mark.parametrize(("name1", "name2"), ...)  (Specified default value)
+parametrize-values-row-type = "tuple"  # Enforce using tuple for parametrize values. Example: @pytest.mark.parametrize(("name1", "name2"), [(1, 2), (3, 4)])  (Specified default value)
+parametrize-values-type = "list"       # Enforce using list for parametrize values. Example: @pytest.mark.parametrize("name", [1, 2, 3])  (Specified default value)
+
+
+[tool.ruff.lint.flake8-quotes]  # Depends on formatter.quote-style setting
+docstring-quotes = "double"     # Enforce double quotes for docstrings.  (Specified default value)
+inline-quotes = "double"        # Enforce double quotes for inline strings.  (Specified default value)
+multiline-quotes = "double"     # Enforce double quotes for multiline strings.  (Specified default value)
+
+
+[tool.ruff.lint.isort]
+lines-after-imports = 2          # Add two blank lines after the import section.
+lines-between-types = 1          # Add one blank line between direct imports and from-state imports.
+split-on-trailing-comma = false  # Fold imports if they fit in one line even if there's a trailing comma.
+
+
+[tool.ruff.lint.mccabe]
+max-complexity = 15  # Set maximum allowed complexity for functions to 15 (if/elif, try/except, for and etc every thing add +1 complexity).
+
+
+[tool.ruff.lint.pep8-naming]
+ignore-names = [  # Ignore specific names when checking for nameing conventions.  (Specified default values)
+    "setUp",
+    "tearDown",
+    "setUpClass",
+    "tearDownClass",
+    "setUpModule",
+    "tearDownModule",
+    "asyncSetUp",
+    "asyncTearDown",
+    "setUpTestData",
+    "failureException",
+    "longMessage",
+    "maxDiff",
+]
+
+
+[tool.ruff.lint.pycodestyle]  # Depends on ruff line-length setting
+max-doc-length = 90  # Set maximum docstring line length to 100 characters.
+
+
+[tool.ruff.lint.pylint]
+allow-dunder-method-names = [  # Add to list of allow specific dunder method names commonly used in SQLAlchemy models.
+    "__tablename__",
+    "__table_args__",
+]
+max-args = 10                  # Set maximum number of arguments for functions/methods to 10.
+max-branches = 7               # Set maximum number of branches (if, elif, else, try, for, match) in functions/methods to 7.
+
 
 [tool.ruff.lint.per-file-ignores]
-"__init__.py" = ["E402"]  # Allow imports not at the top of the file in __init__.py files.
+"__init__.py" = ["F401"]      # Ignore unused imports in __init__.py files.
+"migrations/*.py" = ["F403"]  # Ignore 'from module import *' in migration files.

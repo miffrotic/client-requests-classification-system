@@ -1,5 +1,6 @@
 __pycache__/
 .env.example.local
+.pre-commit-config.yaml
 .gitignore
 .nginx.conf
 README.md

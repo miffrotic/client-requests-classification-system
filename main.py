@@ -1,7 +1,9 @@
-from fastapi import FastAPI
-from apps.users.api import router as users_router
 import uvicorn
+
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from apps.users.api import router as users_router
 from config import settings
 
 

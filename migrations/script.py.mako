@@ -10,7 +10,7 @@ from typing import Sequence, Union
 from alembic import op
 import sqlalchemy as sa
 
-from config.constants import DB_SCHEMA
+from config.constants import DB_SCHEMA, DB_TEST_SCHEMA
 ${imports if imports else ""}
 
 # revision identifiers, used by Alembic.
