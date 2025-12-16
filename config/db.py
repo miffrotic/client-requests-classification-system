@@ -7,7 +7,7 @@ from config.constants import settings
 
 
 _engine = create_async_engine(
-    url=settings.db.connection_url,
+    url=settings.db.URL,
     connect_args={"server_settings": {"search_path": settings.db.SCHEMA}},
     future=True,
     echo=False,
@@ -16,6 +16,8 @@ _engine = create_async_engine(
 
 _sessionmaker = async_sessionmaker(
     bind=_engine,
+    autoflush=False,
+    autocommit=False,
     expire_on_commit=False,
     echo=False,
     echo_pool=False,

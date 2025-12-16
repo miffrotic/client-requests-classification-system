@@ -29,7 +29,7 @@ class DataBaseSettings(CommonSettings):
     TEST_SCHEMA : str = "test_schema"
 
     @property
-    def connection_url(self) -> str:
+    def URL(self) -> str:
         return f"postgresql+asyncpg://{self.USER}:{self.PASSWORD}@{self.HOST}:{self.PORT}/{self.NAME}"
 
 

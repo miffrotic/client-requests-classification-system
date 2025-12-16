@@ -11,7 +11,7 @@ from apps.users.models import *  # noqa: F401
 from config import BaseORM, settings
 
 config = context.config
-config.set_main_option("sqlalchemy.url", settings.db.connection_url)
+config.set_main_option("sqlalchemy.url", settings.db.URL)
 version_table = "alembic_version"
 
 script = context.script
