@@ -7,7 +7,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.schema import CreateSchema
 
-from apps.users.models import *  # noqa: F401
+from apps.users.models import *
 from config import BaseORM, settings
 
 config = context.config
