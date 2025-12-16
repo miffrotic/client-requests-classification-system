@@ -1,4 +1,9 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+BASE_DIR = Path(__file__).parent.parent
 
 
 class CommonSettings(BaseSettings):
@@ -20,7 +25,23 @@ class AppSettings(CommonSettings):
             "docs_url": f"{settings.app.URL_PREFIX}/docs",
             "redoc_url": f"{settings.app.URL_PREFIX}/redoc",
             "openapi_url": f"{settings.app.URL_PREFIX}/openapi.json",
+            "login": f"{settings.app.URL_PREFIX}/users/auth/login",
+            "register": f"{settings.app.URL_PREFIX}/users/auth/register",
+            "refresh": f"{settings.app.URL_PREFIX}/users/auth/refresh",
         }
+
+
+class JWTSettings(CommonSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="JWT_",
+    )
+
+    ALGORITHM: str = "RS256"
+    PUBLIC_KEY_PATH: Path = BASE_DIR / "certs" / "jwt-public.pem"
+    PRIVATE_KEY_PATH: Path = BASE_DIR / "certs" / "jwt-private.pem"
+
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
+    REFRESH_TOKEN_EXPIRE_MINUTES: int = 10_080  # 7 days
 
 
 class DataBaseSettings(CommonSettings):
@@ -59,6 +80,8 @@ class Settings:
     def __init__(self) -> None:
         self.app = AppSettings()
         self.db = DataBaseSettings()
+        self.jwt = JWTSettings()
+        self.email = EmailSettings()
 
 
 settings = Settings()

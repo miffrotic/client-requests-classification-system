@@ -16,8 +16,9 @@ class UserProfileBase(BaseModel):
     email: EmailStr
 
 
-class UserProfileCreateRequest(UserProfileBase):
+class UserCreateRequest(UserProfileBase):
     password: str
+    password_confirm: str
 
 
 class UserProfileResponse(UserProfileBase):
@@ -25,3 +26,10 @@ class UserProfileResponse(UserProfileBase):
 
     is_active: bool
     last_login: datetime | None
+
+
+class UserLoginRequest(BaseModel):
+    model_config = ConfigDict(validate_by_name=True, from_attributes=True)
+
+    email: EmailStr
+    password: str

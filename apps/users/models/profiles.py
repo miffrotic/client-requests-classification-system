@@ -21,7 +21,12 @@ class UserProfile(BaseORM, CUDMixin):
         comment="Пол пользователя",
     )
 
-    email: Mapped[str] = mapped_column(String(50), comment="Электронная почта пользователя")
+    email: Mapped[str] = mapped_column(
+        String(50),
+        unique=True,
+        index=True,
+        comment="Электронная почта пользователя",
+    )
     password: Mapped[str] = mapped_column(comment="Хэш пароля пользователя")
 
     is_active: Mapped[bool] = mapped_column(
