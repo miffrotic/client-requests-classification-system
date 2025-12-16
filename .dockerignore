@@ -1,0 +1,7 @@
+__pycache__/
+.env.example.local
+.gitignore
+.nginx.conf
+README.md
+mediafiles/
+staticfiles/
