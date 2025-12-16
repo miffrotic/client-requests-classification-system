@@ -150,6 +150,7 @@ select = [
 ignore = [
     "ANN401",   # (DON'T LIKE IT)             Prohibits "Any" type annotation
     "ERA001",   # (DON'T LIKE IT)             Prohibits commented-out code
+    "B904",     # (DON'T LIKE IT)             Insist to use from statement in except blocks
     "B912",     # (ONLY FOR PYTHON 3.14)      Prohibits to use map without "strict=..."
     "COM812",   # (CONFLICTS WITH FORMATTER)  Add trailing commas
     "COM819",   # (CONFLICTS WITH FORMATTER)  Remove trailing commas where they don't necessary
@@ -278,4 +279,4 @@ max-branches = 7               # Set maximum number of branches (if, elif, else,
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]      # Ignore unused imports in __init__.py files.
-"migrations/*.py" = ["F403"]  # Ignore 'from module import *' in migration files.
+"migrations/*.py" = ["F403", "N999"]  # Ignore 'from module import *' and invalid naming in migration files.

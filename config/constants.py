@@ -12,7 +12,15 @@ class CommonSettings(BaseSettings):
 
 class AppSettings(CommonSettings):
     DEBUG: bool = False
-    URL_PREFIX: str = "/myhotelki-api"
+    URL_PREFIX: str = "/api"
+
+    @property
+    def PUBLIC_URLS(self) -> dict[str, str]:  # noqa: N802
+        return {
+            "docs_url": f"{settings.app.URL_PREFIX}/docs",
+            "redoc_url": f"{settings.app.URL_PREFIX}/redoc",
+            "openapi_url": f"{settings.app.URL_PREFIX}/openapi.json",
+        }
 
 
 class DataBaseSettings(CommonSettings):
@@ -20,8 +28,8 @@ class DataBaseSettings(CommonSettings):
         env_prefix="DB_",
     )
 
-    USER: str = "root"
-    PASSWORD: str = "root"  # noqa: S105
+    USER: str = "dev_user"
+    PASSWORD: str = "dev_user"  # noqa: S105
     HOST: str = "localhost"
     PORT: int = 5432
     NAME: str = "dev_db"

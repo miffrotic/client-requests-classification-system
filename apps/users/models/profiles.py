@@ -1,28 +1,33 @@
-from sqlalchemy import Boolean, Date, DateTime, ForeignKey, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from datetime import date, datetime
 
+from sqlalchemy import Enum, String
+from sqlalchemy.orm import Mapped, mapped_column
+
+from apps.common.db import CUDMixin, IntPK
+from apps.users.utils.types import SexEnum
 from config import BaseORM
 
 
-class UsersProfilesORM(BaseORM):
+class UserProfile(BaseORM, CUDMixin):
     __tablename__ = "users_profiles"
 
-    first_name: Mapped[String] = mapped_column()
-    last_name: Mapped[String] = mapped_column()
-    birth_date: Mapped[Date] = mapped_column()
-    sex: Mapped[String] = mapped_column()
-    email: Mapped[String] = mapped_column()
-    password: Mapped[String] = mapped_column()
+    id: Mapped[IntPK]
 
-    group_id: Mapped[Integer] = mapped_column(ForeignKey("users_groups.id"))
+    first_name: Mapped[str] = mapped_column(String(30), comment="Имя пользователя")
+    last_name: Mapped[str] = mapped_column(String(30), comment="Фамилия пользователя")
+    birth_date: Mapped[date] = mapped_column(comment="Дата рождения пользователя")
+    sex: Mapped[SexEnum] = mapped_column(
+        Enum(SexEnum, name="sex_choices", length=10, inherit_schema=True),
+        comment="Пол пользователя",
+    )
 
-    is_active: Mapped[Boolean] = mapped_column()
-    last_login: Mapped[DateTime] = mapped_column()
+    email: Mapped[str] = mapped_column(String(50), comment="Электронная почта пользователя")
+    password: Mapped[str] = mapped_column(comment="Хэш пароля пользователя")
 
-    created_at: Mapped[DateTime] = mapped_column()
-    updated_at: Mapped[DateTime] = mapped_column()
-    deleted_at: Mapped[DateTime] = mapped_column()
-
-    group: Mapped["UsersGroupsORM"] = relationship(  # noqa: F821
-        "UsersGroupsORM", foreign_keys=["users_profiles.group_id"]
+    is_active: Mapped[bool] = mapped_column(
+        server_default="1",
+        comment="Флаг активности пользователя",
+    )
+    last_login: Mapped[datetime | None] = mapped_column(
+        comment="Дата и время последнего входа пользователя",
     )

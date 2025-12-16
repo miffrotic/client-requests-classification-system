@@ -17,7 +17,7 @@ config.set_main_option("sqlalchemy.url", settings.db.URL)
 version_table = "alembic_version"
 
 script = context.script
-script.version_locations = ["migrations/versions/"]
+script.version_locations = ["migrations/versions"]
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
@@ -78,6 +78,7 @@ async def run_async_migrations() -> None:
 
     async with connectable.connect() as connection:
         await connection.execute(CreateSchema(target_metadata.schema, if_not_exists=True))
+        await connection.commit()
         await connection.run_sync(do_run_migrations)
 
     await connectable.dispose()

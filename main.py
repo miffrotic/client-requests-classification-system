@@ -8,10 +8,10 @@ from config import settings
 
 
 app = FastAPI(
-    docs_url=f"{settings.app.URL_PREFIX}/docs/",
-    redoc_url=f"{settings.app.URL_PREFIX}/redoc/",
-    openapi_url=f"{settings.app.URL_PREFIX}/openapi.json",
-    title="MyHotelki API",
+    docs_url=settings.app.PUBLIC_URLS["docs_url"],
+    redoc_url=settings.app.PUBLIC_URLS["redoc_url"],
+    openapi_url=settings.app.PUBLIC_URLS["openapi_url"],
+    title="Project API",
 )
 
 app.add_middleware(CORSMiddleware, allow_origins=["*"])

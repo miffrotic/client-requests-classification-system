@@ -30,8 +30,14 @@ class BaseORM(DeclarativeBase):
 
 
 async def _get_session() -> AsyncGenerator[AsyncSession, None]:
-    async with _sessionmaker.begin() as session:
-        yield session
+    async with _sessionmaker() as session:
+        try:
+            yield session
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()
 
 
 SessionDep = Annotated[AsyncSession, Depends(_get_session)]
