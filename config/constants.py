@@ -64,24 +64,11 @@ class DataBaseSettings(CommonSettings):
         )
 
 
-class EmailSettings(CommonSettings):
-    model_config = SettingsConfigDict(
-        env_prefix="EMAIL_",
-    )
-
-    HOST: str = "smtp.gmail.com"
-    PORT: int = 587
-    ENCRYPT: str = "TLS"
-    USER: str
-    PASSWORD: str
-
-
 class Settings:
     def __init__(self) -> None:
         self.app = AppSettings()
         self.db = DataBaseSettings()
         self.jwt = JWTSettings()
-        self.email = EmailSettings()
 
 
 settings = Settings()
