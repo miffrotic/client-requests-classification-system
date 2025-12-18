@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import datetime
 
 from fastapi import APIRouter, HTTPException, status
 from jwt import InvalidTokenError
@@ -45,7 +45,7 @@ async def login_user(
             detail="User account is inactive",
         )
 
-    user.last_login = datetime.now(UTC)
+    user.last_login = datetime.now()  # noqa: DTZ005
     await session.commit()
 
     access_token = create_token(

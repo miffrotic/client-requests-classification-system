@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from apps.ml.api import router as ml_router
 from apps.users.api import router as users_router
 from config import settings
 from middlewares.auth import auth_middleware
@@ -19,6 +20,7 @@ app.middleware("http")(auth_middleware)
 app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 app.include_router(users_router)
+app.include_router(ml_router)
 
 
 if __name__ == "__main__":

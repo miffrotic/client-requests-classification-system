@@ -40,4 +40,8 @@ async def _get_session() -> AsyncGenerator[AsyncSession, None]:
             await session.close()
 
 
+def get_sessionmaker() -> async_sessionmaker[AsyncSession]:
+    return _sessionmaker
+
+
 SessionDep = Annotated[AsyncSession, Depends(_get_session)]

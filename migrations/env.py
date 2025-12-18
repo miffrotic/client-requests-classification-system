@@ -8,6 +8,7 @@ from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 from sqlalchemy.schema import CreateSchema
 
+from apps.ml.models import *
 from apps.users.models import *
 from config import BaseORM, settings
 

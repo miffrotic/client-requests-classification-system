@@ -12,6 +12,12 @@ router = APIRouter(prefix="/profiles", tags=["Profiles"])
 @router.get("/", status_code=status.HTTP_200_OK)
 async def get_user_profile(user_id: int, session: SessionDep) -> UserProfileResponse:
     try:
-        return await session.get_one(UserProfile, user_id)
+        user = await session.get_one(UserProfile, user_id)
+
+        if user.is_active:
+            raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User is not found or inactive")
+
     except NoResultFound:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User is not found")
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User is not found or inactive")
+
+    return user

@@ -208,3 +208,5 @@ __marimo__/
 
 # Certs
 certs/
+
+.DS_Store
