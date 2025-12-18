@@ -14,7 +14,7 @@ async def get_user_profile(user_id: int, session: SessionDep) -> UserProfileResp
     try:
         user = await session.get_one(UserProfile, user_id)
 
-        if user.is_active:
+        if not user.is_active:
             raise HTTPException(status.HTTP_404_NOT_FOUND, detail="User is not found or inactive")
 
     except NoResultFound:

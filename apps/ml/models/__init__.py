@@ -1,1 +1,1 @@
-from .history import MLIntentAppeal
+from .intent import MLIntentAppeal

@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from apps.ml.api.history import router as intent_router
+from apps.ml.api.intent import router as intent_router
 from config import settings
 
 

@@ -7,7 +7,7 @@ from sqlalchemy import delete, select
 from sqlalchemy.orm import joinedload
 
 from apps.ml.models import MLIntentAppeal
-from apps.ml.schemas.history import (
+from apps.ml.schemas.intent import (
     MLIntentAppealCreateRequest,
     MLIntentAppealResponse,
     MLIntentAppealStatsResponse,
