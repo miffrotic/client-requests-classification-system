@@ -1,6 +1,6 @@
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from apps.users.utils.types import SexEnum
 
@@ -8,8 +8,8 @@ from apps.users.utils.types import SexEnum
 class UserProfileBase(BaseModel):
     model_config = ConfigDict(validate_by_name=True, from_attributes=True, use_enum_values=True)
 
-    first_name: str
-    last_name: str
+    first_name: str = Field(..., min_length=2, max_length=30)
+    last_name: str = Field(..., min_length=2, max_length=30)
     birth_date: date
     sex: SexEnum
 
@@ -17,8 +17,8 @@ class UserProfileBase(BaseModel):
 
 
 class UserCreateRequest(UserProfileBase):
-    password: str
-    password_confirm: str
+    password: str = Field(..., min_length=8, max_length=30)
+    password_confirm: str = Field(..., min_length=8, max_length=30)
 
 
 class UserProfileResponse(UserProfileBase):

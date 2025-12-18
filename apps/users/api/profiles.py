@@ -6,7 +6,7 @@ from apps.users.schemas.profiles import UserProfileResponse
 from config import SessionDep
 
 
-router = APIRouter(prefix="/profiles", tags=["Profiles"])
+router = APIRouter(prefix="/profiles", tags=["Users Profiles"])
 
 
 @router.get("/", status_code=status.HTTP_200_OK)

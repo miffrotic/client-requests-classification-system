@@ -1,16 +1,21 @@
+import pickle
 import re
 import string
+import warnings
+
+from pathlib import Path
 
 import nltk
 
 from nltk.corpus import stopwords
 from nltk.stem import PorterStemmer, WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from sklearn.exceptions import InconsistentVersionWarning
+
+from config import BASE_DIR
 
 
-nltk.download("stopwords")
-nltk.download("punkt_tab")
-nltk.download("wordnet")
+warnings.filterwarnings("ignore", category=InconsistentVersionWarning)
 
 
 class TextPreprocessor:
@@ -69,5 +74,18 @@ class TextPreprocessor:
 
         return " ".join(filtered_tokens)
 
+
+nltk.download("stopwords", quiet=True)
+nltk.download("punkt_tab", quiet=True)
+nltk.download("wordnet", quiet=True)
+
+with Path(BASE_DIR / "pkl_models" / "bow_vectorizer_kgl.pkl").open("rb") as file:
+    bow_vec = pickle.load(file)
+
+with Path(BASE_DIR / "pkl_models" / "bow_linear_svc_model.pkl").open("rb") as file:
+    model = pickle.load(file)
+
+with Path(BASE_DIR / "pkl_models" / "multi_label_binarizer.pkl").open("rb") as file:
+    mlb = pickle.load(file)
 
 preprocessor = TextPreprocessor()
