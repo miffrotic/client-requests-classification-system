@@ -96,20 +96,26 @@ Telegram-бота, который принимает текст обращени
 
 3. **Создайте виртуальное окружение:**
 	```cmd
-	python -m venv venv
+	python -m venv .venv
 	```
 
 4. **Активируйте виртуальное окружение:**
+
+	Для Windows:
 	```cmd
-	venv\Scripts\activate
+	.venv\Scripts\activate
+	```
+	Для Linux систем:
+	```cmd
+	source .venv/bin/activate
 	```
 
-5. **Установите зависимости:**
+6. **Установите зависимости:**
 	```cmd
 	poetry install
 	```
 
-6. **Установите хуки для гита:**
+7. **Установите хуки для гита:**
 	```cmd
 	pre-commit install
 	```
@@ -126,12 +132,12 @@ Telegram-бота, который принимает текст обращени
 	pre-commit run <hook_id_1> <hook_id_2>
 	```
 
-7. **Настройте переменные окружения:**
+8. **Настройте переменные окружения:**
 
 	Создайте файл `.env` и скопируйте туда данные из `.env.example.local`.
 	При необходимости поменяйте значения на свои.
 
-8. **Сгенерируйте приватный и публичный ключ:**
+9. **Сгенерируйте приватный и публичный ключ:**
 	```bash
 	mkdir -p certs && openssl genrsa -out certs/jwt-private.pem 2048
 	```
@@ -139,18 +145,24 @@ Telegram-бота, который принимает текст обращени
 	openssl rsa -in certs/jwt-private.pem -out certs/jwt-public.pem -outform PEM -pubout
 	```
 
-9. **Обновить миграции в БД до актуального состояния:**
+10. **Обновить миграции в БД до актуального состояния:**
 	```cmd
 	alembic upgrade head
 	```
 
-10. **Запустите серис:**
+11. **Запустите серис:**
     ```cmd
     docker compose -f docker-compose.local.yml up -d
     ```
 	```cmd
 	python main.py
 	```
+
+## Примеры запросов к модели по ручке /forward:
+- `how I can delete an account and cancel my order`, интент на запрос будет:  `cancel_order, delete_account`
+- `please help me i cant get a refund for my order`, интент на запрос будет:  `get_refund`
+- `where am I? What i need to do here!!`, интент на запрос будет:  `unknown_intent`
+- `How or where I can create my new account?`, интент на запрос будет:  `create_account`
 
 
 ## Вспомогательные команды
