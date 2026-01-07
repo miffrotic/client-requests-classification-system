@@ -1,5 +1,7 @@
 <h1 align="center">Система автоматической категоризации обращений в службу поддержки</h1>
-<img align="center" src="https://repository-images.githubusercontent.com/1070318975/bcdc9d94-a220-47c3-ba05-e417af29846f">
+<div align="center">
+	<img src="https://repository-images.githubusercontent.com/1070318975/bcdc9d94-a220-47c3-ba05-e417af29846f">
+</div>
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;В условиях современного бизнеса, где крупные компании ежедневно обрабатывают тысячи обращений в службу поддержки, автоматизация процессов становится ключевым фактором повышения эффективности. Проект «Автоматическая категоризация обращений в службу поддержки» направлен на решение задачи классификации и кластеризации запросов клиентов, что позволяет оптимизировать работу службы поддержки. Автоматизация категоризации тикетов по типу проблемы (например, «доступ», «сеть», «программное обеспечение», «биллинг») ускоряет маршрутизацию запросов к соответствующим специалистам, минимизирует время ожидания клиентов и снижает нагрузку на персонал. Кроме того, проект включает разработку интуитивно понятного интерфейса для взаимодействия с системой, что делает её удобной для использования в реальных условиях.
 
 <br>
@@ -79,6 +81,149 @@ Telegram-бота, который принимает текст обращени
 Опыт создания REST API (фреймворк FastAPI) и телеграм ботов (библиотека aiogram).
 
 <br>
+
+## Быстрый старт
+
+1. **Клонируйте репозиторий:**
+	```cmd
+	git clone git@github.com:miffrotic/client-requests-classification-system.git
+	```
+
+2. **Установите poetry ГЛОБАЛЬНО, если не установлен**
+	```cmd
+	python -m pip install poetry
+	```
+
+3. **Создайте виртуальное окружение:**
+	```cmd
+	python -m venv .venv
+	```
+
+4. **Активируйте виртуальное окружение:**
+
+	Для Windows:
+	```cmd
+	.venv\Scripts\activate
+	```
+	Для Linux систем:
+	```cmd
+	source .venv/bin/activate
+	```
+
+6. **Установите зависимости:**
+	```cmd
+	poetry install
+	```
+
+7. **Установите хуки для гита:**
+	```cmd
+	pre-commit install
+	```
+	Если нужно обновить хуки после редактирования pre-commit конфига:
+	```cmd
+	pre-commit autoupdate
+	```
+	Если нужно отформатировать весь проект:
+	```cmd
+	pre-commit run --all-files
+	```
+	Если нужно запустить конкретный хук:
+	```cmd
+	pre-commit run <hook_id_1> <hook_id_2>
+	```
+
+8. **Настройте переменные окружения:**
+
+	Создайте файл `.env` и скопируйте туда данные из `.env.example.local`.
+	При необходимости поменяйте значения на свои.
+
+9. **Сгенерируйте приватный и публичный ключ:**
+	```bash
+	mkdir -p certs && openssl genrsa -out certs/jwt-private.pem 2048
+	```
+	```bash
+	openssl rsa -in certs/jwt-private.pem -out certs/jwt-public.pem -outform PEM -pubout
+	```
+
+10. **Обновить миграции в БД до актуального состояния:**
+	```cmd
+	alembic upgrade head
+	```
+
+11. **Запустите серис:**
+    ```cmd
+    docker compose -f docker-compose.local.yml up -d
+    ```
+	```cmd
+	python main.py
+	```
+
+## Примеры запросов к модели по ручке /forward:
+- `how I can delete an account and cancel my order`, интент на запрос будет:  `cancel_order, delete_account`
+- `please help me i cant get a refund for my order`, интент на запрос будет:  `get_refund`
+- `where am I? What i need to do here!!`, интент на запрос будет:  `unknown_intent`
+- `How or where I can create my new account?`, интент на запрос будет:  `create_account`
+
+
+## Вспомогательные команды
+
+1. **Работа с библиотеками**
+
+	Добавить библиотеку в общую группу:
+	```cmd
+	poetry add <library_1> <library_2>
+	```
+	Если надо добавить в определенную группу, например dev:
+	```cmd
+	poetry add <library> --group <dependency-group>
+	```
+	Убрать определенную библиотеку:
+	```cmd
+	poetry remove <library_1> <library_2>
+	```
+	Если надо убрать из определенной группы, например dev:
+	```cmd
+	poetry remove <library> --group <dependency-group>
+	```
+	**На данный момент remove работает неправильно, поэтому делаем следующие:**
+
+	Удаляем вручную строчку с библиотекой из pyproject.toml и выполняем следующие две команды:
+	```cmd
+	poetry lock
+	poetry sync
+	```
+
+2. **Миграции**
+
+	Создать миграцию:
+	```cmd
+	alembic revision --autogenerate -m "<Комментарий на английском>"
+	```
+	Обновить миграции в БД до актуального состояния:
+	```cmd
+	alembic upgrade head
+	```
+	Обновить миграции в БД до конкретного состояния:
+	```cmd
+	alembic upgrade <revision_id>
+	```
+	Откатить последнюю миграцию в БД:
+	```cmd
+	alembic downgrade -1
+	```
+	Откатить до определенной миграции в БД:
+	```cmd
+	alembic downgrade <revision_id>
+	```
+
+
+## Документация
+
+После запуска приложения документация по API доступна по адресам:
+```
+http://127.0.0.1:8000/api/docs/
+http://127.0.0.1:8000/api/redoc/
+```
 
 ## Магистерский проект
 
