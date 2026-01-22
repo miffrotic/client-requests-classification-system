@@ -64,12 +64,21 @@ class DataBaseSettings(CommonSettings):
         )
 
 
+class BotSettings(CommonSettings):
+    model_config = SettingsConfigDict(env_prefix="BOT_")
+    
+    TOKEN: str 
+    API_URL: str
+    API_EMAIL: str
+    API_PASSWORD: str
+
+
 class Settings:
     def __init__(self) -> None:
         self.app = AppSettings()
         self.db = DataBaseSettings()
         self.jwt = JWTSettings()
-
+        self.bot = BotSettings()
 
 settings = Settings()
 DB_SCHEMA = settings.db.SCHEMA
