@@ -3,6 +3,7 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from apps.dl.api import router as dl_router
 from apps.ml.api import router as ml_router
 from apps.users.api import router as users_router
 from config import settings
@@ -21,6 +22,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"])
 
 app.include_router(users_router)
 app.include_router(ml_router)
+app.include_router(dl_router)
 
 
 if __name__ == "__main__":

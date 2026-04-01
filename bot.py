@@ -54,7 +54,7 @@ async def handle_text(message: types.Message):
             await message.answer("Не удалось подключиться к серверу.")
             return
 
-    predict_url = f"{settings.bot.API_URL}{settings.app.URL_PREFIX}/ml/intent/forward"
+    predict_url = f"{settings.bot.API_URL}{settings.app.URL_PREFIX}/dl/intent/forward"
     
     payload = {
         "message": message.text, 

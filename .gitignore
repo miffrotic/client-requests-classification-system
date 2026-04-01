@@ -210,3 +210,6 @@ __marimo__/
 
 # Certs
 certs/
+
+# BERT (DL)
+safetensors_models/
