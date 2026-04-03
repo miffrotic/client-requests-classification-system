@@ -4,12 +4,18 @@ import httpx
 from aiogram import Bot, Dispatcher, types, F
 from aiogram.filters import CommandStart
 from config.constants import settings
+from aiogram.client.telegram import TelegramAPIServer
+from aiogram.client.session.aiohttp import AiohttpSession
 
 
 logging.basicConfig(level=logging.DEBUG)
 
+PROXY_URL = "https://tg-api-proxy.iasadulaev.workers.dev"
 
-bot = Bot(token=settings.bot.TOKEN)
+# Настраиваем сервер
+custom_api = TelegramAPIServer.from_base(PROXY_URL) 
+session = AiohttpSession(api=custom_api)
+bot = Bot(token=settings.bot.TOKEN, session=session)
 dp = Dispatcher()
 
 # Авторизация бота в FastAPI сервисе
@@ -112,7 +118,7 @@ async def main():
     await get_jwt_token()
     
     print("Бот запущен...")
-    await dp.start_polling(bot)
+    await dp.start_polling(bot, polling_timeout=20)
 
 if __name__ == '__main__':
     try:
