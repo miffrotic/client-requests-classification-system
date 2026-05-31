@@ -1,127 +1,344 @@
+"""Telegram-бот на aiogram 3.x с гибридным pipeline:
+
+1. Сообщение пользователя сначала уходит в FastAPI-сервис классификации
+   интентов (старый flow через ``/dl/intent/forward``).
+2. Полученный интент передаётся LLM-агенту (LangChain + Gemini) как soft-hint.
+3. Агент возвращает structured output :class:`schemas.CustomerRequestAnalysis`
+   с интентом, сущностями, тональностью и готовым ответом на английском.
+4. Бот шлёт пользователю сам ответ + красиво форматированную карточку
+   извлечённых данных. Если тональность ``Critical/Angry`` — параллельно
+   отправляет alert в ``MANAGER_CHAT_ID``.
+"""
+
+from __future__ import annotations
+
 import asyncio
 import logging
-import httpx
-from aiogram import Bot, Dispatcher, types, F
-from aiogram.filters import CommandStart
-from config.constants import settings
-from aiogram.client.telegram import TelegramAPIServer
+import os
+from html import escape
+from pathlib import Path
+from typing import Any, Final
+
+from aiogram import Bot, Dispatcher, F, types
 from aiogram.client.session.aiohttp import AiohttpSession
+from aiogram.client.telegram import TelegramAPIServer
+from aiogram.enums import ChatAction
+from aiogram.filters import CommandStart
+from aiogram.utils.chat_action import ChatActionSender
+from dotenv import load_dotenv
+
+from agent import analyze_request
+from config.constants import settings
+from database import fetch_order_by_number, fetch_orders_summary, init_db, seed_database
+from intent_client import IntentClient, build_default_intent_client
+from schemas import CustomerRequestAnalysis
 
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-PROXY_URL = "https://tg-api-proxy.iasadulaev.workers.dev"
+load_dotenv(Path(__file__).parent / ".env")
 
-# Настраиваем сервер
-custom_api = TelegramAPIServer.from_base(PROXY_URL) 
-session = AiohttpSession(api=custom_api)
-bot = Bot(token=settings.bot.TOKEN, session=session)
-dp = Dispatcher()
+# PROXY_URL: Final[str] = "https://tg-api-proxy.iasadulaev.workers.dev"
+LOCAL_PROXY: Final[str] = os.getenv("HTTP_PROXY")
+MANAGER_CHAT_ID: Final[str | None] = os.getenv("MANAGER_CHAT_ID") or None
 
-# Авторизация бота в FastAPI сервисе
-ACCESS_TOKEN = None
-async def get_jwt_token():
-    global ACCESS_TOKEN
-    
-    login_url = f"{settings.bot.API_URL}{settings.app.PUBLIC_URLS['login']}"
-
-    async with httpx.AsyncClient() as client:
-        try:
-            logging.info(f"Бот пытается войти в API: {login_url}")
-            response = await client.post(
-                login_url,
-                json={                                 
-                    "email": settings.bot.API_EMAIL,  
-                    "password": settings.bot.API_PASSWORD
-                }
-            )
-            response.raise_for_status()
-            tokens = response.json()
-            ACCESS_TOKEN = tokens["access_token"]
-            logging.info("✅ Бот успешно авторизовался в API!")
-        except Exception as e:
-            logging.error(f"❌ Ошибка авторизации бота: {e}")
-            logging.error("Проверьте, запущен ли сервер и создан ли пользователь бота.")
-            ACCESS_TOKEN = None
-
-@dp.message(CommandStart())
-async def cmd_start(message: types.Message):
-    await message.answer(
-        "Hello! Customer support here.\n"
-        "How can I help you?"
+if not MANAGER_CHAT_ID:
+    logger.warning(
+        "MANAGER_CHAT_ID is not set — escalation alerts will be logged only, "
+        "not delivered to a human manager.",
     )
 
+# custom_api = TelegramAPIServer.from_base(PROXY_URL)
+# session = AiohttpSession(api=custom_api)
+session = AiohttpSession(proxy=LOCAL_PROXY)
+bot = Bot(token=settings.bot.TOKEN, session=session) # session=session
+
+dp = Dispatcher()
+
+intent_client: IntentClient = build_default_intent_client()
+
+@dp.message(CommandStart())
+async def cmd_start(message: types.Message) -> None:
+    """Greeting and a short usage hint."""
+    await message.answer(
+        "Hello! I'm your virtual customer-support manager.\n\n"
+        "Tell me what's going on with your order, ask a question, or share "
+        "feedback — I'll do my best to help you right away.\n\n"
+        "Tip: if you mention your order number (e.g. <code>ORD-1001</code>), "
+        "address, or phone — I'll pick them up automatically.",
+        parse_mode="HTML",
+    )
+
+
+def _extract_classifier_intent(classification: dict | None) -> str | None:
+    """Pull the intent label out of the FastAPI classifier response, if any."""
+    if not classification:
+        return None
+    raw = classification.get("intents")
+    if raw is None:
+        return None
+    if isinstance(raw, list):
+        return ", ".join(str(item) for item in raw) if raw else None
+    return str(raw)
+
+
+def _format_value(value: str | None) -> str:
+    """HTML-safe representation of an optional extracted field."""
+    if value is None or value == "":
+        return "<i>—</i>"
+    return f"<code>{escape(value)}</code>"
+
+
+async def _lookup_order(order_number: str) -> dict[str, Any] | None:
+    """Безопасный lookup заказа в SQLite — не пробрасывает исключения наверх."""
+    try:
+        return await fetch_order_by_number(order_number)
+    except Exception:
+        logger.exception("DB lookup for order '%s' failed", order_number)
+        return None
+
+
+async def _lookup_summary() -> dict[str, Any] | None:
+    """Безопасный сбор статистики по всем заказам."""
+    try:
+        return await fetch_orders_summary()
+    except Exception:
+        logger.exception("DB summary lookup failed")
+        return None
+
+
+def _build_db_facts_block(
+    analysis: CustomerRequestAnalysis,
+    *,
+    db_order: dict[str, Any] | None,
+    orders_summary: dict[str, Any] | None,
+) -> str | None:
+    """Render the «From Our System» factual block, or ``None`` if nothing to show.
+
+    Содержит правду из SQLite: либо статус конкретного заказа (или явное
+    «not found»), либо агрегированную сводку — в зависимости от того,
+    что нужно пользователю.
+    """
+    sections: list[str] = []
+
+    if analysis.order_number:
+        order_number_html = escape(analysis.order_number)
+        if db_order is None:
+            sections.append(
+                f"• Order <code>{order_number_html}</code> was <b>not found</b> "
+                f"in our system. Please double-check the number.",
+            )
+        else:
+            status = escape(str(db_order.get("status", "unknown")))
+            customer = escape(str(db_order.get("customer_name", "")))
+            items = escape(str(db_order.get("items", "")))
+            sections.append(
+                f"• Order <code>{order_number_html}</code> — current status: "
+                f"<b>{status}</b>"
+                + (f"\n   Customer on file: {customer}" if customer else "")
+                + (f"\n   Items: {items}" if items else ""),
+            )
+
+    if analysis.wants_overall_summary and orders_summary is not None:
+        total = int(orders_summary.get("total_orders", 0))
+        by_status: dict[str, int] = dict(orders_summary.get("by_status", {}))
+        if total == 0:
+            sections.append("• There are no orders in our system yet.")
+        else:
+            summary_lines = [f"• Total orders in system: <b>{total}</b>"]
+            summary_lines.extend(
+                f"   • {escape(status)}: <b>{count}</b>"
+                for status, count in by_status.items()
+            )
+            sections.append("\n".join(summary_lines))
+    elif analysis.wants_overall_summary and orders_summary is None:
+        sections.append(
+            "• Overall statistics are temporarily unavailable, sorry about that.",
+        )
+
+    if not sections:
+        return None
+
+    return "📦 <b>From Our System:</b>\n" + "\n".join(sections)
+
+
+def _format_db_status(
+    order_number: str | None,
+    db_order: dict[str, Any] | None,
+) -> str | None:
+    """Render the «Order Status (from DB)» line, or ``None`` to omit it."""
+    if not order_number:
+        return None
+    if db_order is None:
+        return "• <b>Order Status (from DB)</b>: <i>not found in our system</i>"
+    return f"• <b>Order Status (from DB)</b>: {_format_value(db_order.get('status'))}"
+
+
+def _build_extracted_card(
+    analysis: CustomerRequestAnalysis,
+    *,
+    db_order: dict[str, Any] | None = None,
+) -> str:
+    """Render the «System Data Extracted» block in HTML."""
+    lines = [
+        "📊 <b>System Data Extracted:</b>",
+        f"• <b>Intent</b>: {_format_value(analysis.intent)}",
+        f"• <b>Order</b>: {_format_value(analysis.order_number)}",
+        f"• <b>Address</b>: {_format_value(analysis.address)}",
+        f"• <b>Phone</b>: {_format_value(analysis.phone)}",
+        f"• <b>Sentiment</b>: {_format_value(analysis.sentiment)}",
+    ]
+
+    db_status_line = _format_db_status(analysis.order_number, db_order)
+    if db_status_line is not None:
+        lines.append(db_status_line)
+
+    return "\n".join(lines)
+
+
+def _build_manager_alert(
+    *,
+    user: types.User,
+    user_text: str,
+    analysis: CustomerRequestAnalysis,
+) -> str:
+    """Render the urgent alert sent to the human-manager chat."""
+    username = f"@{user.username}" if user.username else "(no username)"
+    return (
+        "🚨 <b>URGENT: Angry Customer Alert!</b> 🚨\n"
+        f"<b>User</b>: {escape(username)} (ID: <code>{user.id}</code>)\n"
+        f"<b>Intent</b>: {escape(analysis.intent)}\n"
+        f"<b>Sentiment</b>: {escape(analysis.sentiment)}\n"
+        f"<b>Message</b>: {escape(user_text)}"
+    )
+
+
+async def _notify_manager(
+    *,
+    user: types.User,
+    user_text: str,
+    analysis: CustomerRequestAnalysis,
+) -> None:
+    """Send the escalation message to the manager chat.
+
+    Never raises — escalation is best-effort: if the manager chat is
+    unreachable, we just log the problem and let the main flow continue.
+    """
+    if not MANAGER_CHAT_ID:
+        logger.warning(
+            "Angry customer detected (user_id=%s) but MANAGER_CHAT_ID is unset",
+            user.id,
+        )
+        return
+
+    alert_text = _build_manager_alert(
+        user=user,
+        user_text=user_text,
+        analysis=analysis,
+    )
+
+    try:
+        await bot.send_message(
+            chat_id=MANAGER_CHAT_ID,
+            text=alert_text,
+            parse_mode="HTML",
+        )
+        logger.info("Escalation alert delivered to manager (user_id=%s)", user.id)
+    except Exception:
+        logger.exception(
+            "Failed to deliver escalation alert to MANAGER_CHAT_ID=%s",
+            MANAGER_CHAT_ID,
+        )
+
+
 @dp.message(F.text)
-async def handle_text(message: types.Message):
-    if not ACCESS_TOKEN:
-        await message.answer("⚠️ Бот не подключен к API. Пробую переподключиться...")
-        await get_jwt_token()
-        if not ACCESS_TOKEN:
-            await message.answer("Не удалось подключиться к серверу.")
-            return
+async def handle_text(message: types.Message) -> None:
+    """Hybrid pipeline: intent classifier → structured LLM analyzer → reply (+escalation)."""
+    user_text = (message.text or "").strip()
+    if not user_text:
+        await message.answer("Please send a non-empty text message.")
+        return
 
-    predict_url = f"{settings.bot.API_URL}{settings.app.URL_PREFIX}/dl/intent/forward"
-    
-    payload = {
-        "message": message.text, 
-    }
+    if message.from_user is None:
+        await message.answer("Sorry, I couldn't identify the sender. Please try again.")
+        return
 
-    # 2 попытки: первая + повторная после обновления токена
-    max_attempts = 2
-    for attempt in range(max_attempts):
-        if not ACCESS_TOKEN:
-            await get_jwt_token()
-            if not ACCESS_TOKEN:
-                await message.answer("Не удалось подключиться к серверу.")
-                return
+    async with ChatActionSender(
+        bot=bot,
+        chat_id=message.chat.id,
+        action=ChatAction.TYPING,
+    ):
+        classification = await intent_client.classify(user_text)
+        intent_hint = _extract_classifier_intent(classification)
 
-        headers = {
-            "Authorization": f"Bearer {ACCESS_TOKEN}"
-        }
+        analysis = await analyze_request(user_text, intent_hint=intent_hint)
 
-        async with httpx.AsyncClient() as client:
-            try:
-                response = await client.post(predict_url, json=payload, headers=headers)
-                
-                if response.status_code == 200 or response.status_code == 201:
-                    result = response.json()
-                    
-                    intent = result.get("intents", "Не определено")
-                    confidence = result.get("time_taken", 0) 
+        db_order: dict[str, Any] | None = None
+        orders_summary: dict[str, Any] | None = None
+        if analysis is not None:
+            if analysis.order_number:
+                db_order = await _lookup_order(analysis.order_number)
+            if analysis.wants_overall_summary:
+                orders_summary = await _lookup_summary()
 
-                    text_response = (
-                        f"📩 Request: <i>{payload['message']}</i>\n"
-                        f"🏷 <b>Intent</b>: <code>{intent}</code>"
-                    )
-                    await message.answer(text_response, parse_mode="HTML")
-                    return  
-                
-                elif response.status_code == 401:
-                    logging.info("🔄 Токен устарел. Обновляю...")
-                    await get_jwt_token()
-                    if ACCESS_TOKEN and attempt < max_attempts - 1:
-                        continue
-                    else:
-                        await message.answer("Не удалось обновить токен доступа.")
-                        return
-                
-                else:
-                    # Ошибка (404, 500 и т.д.)
-                    await message.answer(f"Ошибка API: {response.status_code}\n{response.text}")
-                    return
+    if analysis is None:
+        await message.answer(
+            "Sorry, I couldn't process your request right now. "
+            "Please try again in a moment.",
+        )
+        return
 
-            except httpx.RequestError as e:
-                await message.answer(f"Ошибка соединения с сервером: {e}")
-                return
+    facts_block = _build_db_facts_block(
+        analysis,
+        db_order=db_order,
+        orders_summary=orders_summary,
+    )
 
-async def main():
-    await get_jwt_token()
-    
-    print("Бот запущен...")
-    await dp.start_polling(bot, polling_timeout=20)
+    try:
+        await message.answer(escape(analysis.ai_response_text), parse_mode="HTML")
+        if facts_block is not None:
+            await message.answer(facts_block, parse_mode="HTML")
+        await message.answer(
+            _build_extracted_card(analysis, db_order=db_order),
+            parse_mode="HTML",
+        )
+    except Exception:
+        logger.exception("Failed to deliver reply to user_id=%s", message.from_user.id)
+        return
 
-if __name__ == '__main__':
+    if analysis.sentiment == "Critical/Angry":
+        await _notify_manager(
+            user=message.from_user,
+            user_text=user_text,
+            analysis=analysis,
+        )
+
+
+async def _on_startup() -> None:
+    """Boot-time tasks: prepare DB and seed it."""
+    await init_db()
+    await seed_database()
+
+
+async def _on_shutdown() -> None:
+    """Release resources held by long-lived clients."""
+    await intent_client.close()
+    await bot.session.close()
+
+
+async def main() -> None:
+    """Entry point: bring up DB and start long polling."""
+    await _on_startup()
+    logger.info("Bot is up, starting polling...")
+    try:
+        await dp.start_polling(bot, polling_timeout=5)
+    finally:
+        await _on_shutdown()
+
+
+if __name__ == "__main__":
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print('Бот отключён')
+        logger.info("Bot stopped by user")
