@@ -1,0 +1,43 @@
+seed: 42
+
+data:
+  source_path: "../augmented_customer_support_dataset.parquet"
+  train_data: "data/train.csv"
+  val_data: "data/val.csv"
+  test_data: "data/test.csv"
+  text_column: "instruction"
+  label_column: "intent"
+  split:
+    test_size: 0.15
+    val_size: 0.15
+    random_state: 42
+
+model:
+  model_name: "distilbert-base-uncased"
+  max_length: 64
+  inference_max_length: 512
+  threshold: 0.25
+
+training:
+  batch_size: 32
+  epochs: 3
+  learning_rate: 2.0e-5
+  weight_decay: 0.01
+  warmup_ratio: 0.1
+
+mlflow:
+  tracking_uri: "http://127.0.0.1:5000"
+  experiment_name: "distilbert-intent-classification"
+  run_name: null
+  s3_endpoint_url: "http://127.0.0.1:9000"
+  aws_access_key_id: "minioadmin"
+  aws_secret_access_key: "minioadmin"
+
+error_analysis:
+  top_k: 15
+
+robustness:
+  num_samples: 5
+
+demo:
+  text: "I need a refund for my order"

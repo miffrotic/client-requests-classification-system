@@ -213,3 +213,10 @@ certs/
 
 # BERT (DL)
 safetensors_models/
+
+# ML pipeline artifacts
+ml_pipeline/data/
+ml_pipeline/outputs/
+ml_pipeline/.hydra/
+ml_pipeline/**/multirun/
+ml_pipeline/**/outputs/
