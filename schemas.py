@@ -1,5 +1,3 @@
-"""Pydantic-схемы, которые LLM-агент возвращает как structured output."""
-
 from __future__ import annotations
 
 from typing import Literal, Optional
@@ -11,11 +9,6 @@ SentimentLiteral = Literal["Positive", "Neutral", "Negative", "Critical/Angry"]
 
 
 class CustomerRequestAnalysis(BaseModel):
-    """Структурированный разбор входящего обращения клиента.
-
-    LLM возвращает объект этой схемы за один вызов: извлекает сущности,
-    определяет тональность и сразу формирует готовый ответ пользователю.
-    """
 
     intent: str = Field(
         description=(

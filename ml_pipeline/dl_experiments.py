@@ -22,7 +22,7 @@ from ml_pipeline.utils.baseline import evaluate_baseline, train_baseline
 from ml_pipeline.utils.data import (
     create_dataloader,
     fit_multilabel_binarizer,
-    load_split_csv,
+    load_xy_split_csvs,
 )
 from ml_pipeline.utils.error_analysis import build_error_analysis, save_error_analysis
 from ml_pipeline.utils.metrics import compute_bce_loss, compute_multilabel_metrics, logits_to_predictions
@@ -82,21 +82,32 @@ def main(cfg: DictConfig) -> None:
     set_seed(cfg.seed)
     configure_mlflow_s3(cfg)
 
-    train_path = resolve_path(cfg.data.train_data)
-    val_path = resolve_path(cfg.data.val_data)
-    test_path = resolve_path(cfg.data.test_data)
-
-    for path in (train_path, val_path, test_path):
+    # Resolve and validate all six X/y paths before doing any heavy work.
+    split_paths = {
+        "x_train": resolve_path(cfg.data.x_train),
+        "y_train": resolve_path(cfg.data.y_train),
+        "x_val":   resolve_path(cfg.data.x_val),
+        "y_val":   resolve_path(cfg.data.y_val),
+        "x_test":  resolve_path(cfg.data.x_test),
+        "y_test":  resolve_path(cfg.data.y_test),
+    }
+    for key, path in split_paths.items():
         if not path.exists():
-            msg = (
-                f"Split file not found: {path}. "
-                "Run `python ml_pipeline/prepare_data.py` first."
-            )
+            msg = f"Split file not found ({key}): {path}"
             raise FileNotFoundError(msg)
 
-    texts_train, labels_train = load_split_csv(train_path, cfg.data.text_column, cfg.data.label_column)
-    texts_val, labels_val = load_split_csv(val_path, cfg.data.text_column, cfg.data.label_column)
-    texts_test, labels_test = load_split_csv(test_path, cfg.data.text_column, cfg.data.label_column)
+    texts_train, labels_train = load_xy_split_csvs(
+        split_paths["x_train"], split_paths["y_train"],
+        cfg.data.text_column, cfg.data.label_column,
+    )
+    texts_val, labels_val = load_xy_split_csvs(
+        split_paths["x_val"], split_paths["y_val"],
+        cfg.data.text_column, cfg.data.label_column,
+    )
+    texts_test, labels_test = load_xy_split_csvs(
+        split_paths["x_test"], split_paths["y_test"],
+        cfg.data.text_column, cfg.data.label_column,
+    )
 
     mlb = fit_multilabel_binarizer(labels_train)
     tokenizer = DistilBertTokenizerFast.from_pretrained(cfg.model.model_name)
@@ -171,6 +182,11 @@ def main(cfg: DictConfig) -> None:
             logging_strategy="epoch",
             report_to="none",
             load_best_model_at_end=False,
+            # GPU / mixed-precision settings
+            fp16=cfg.training.fp16,
+            bf16=cfg.training.bf16,
+            dataloader_num_workers=cfg.training.dataloader_num_workers,
+            dataloader_pin_memory=cfg.training.dataloader_pin_memory,
         )
 
         trainer = Trainer(
@@ -183,7 +199,6 @@ def main(cfg: DictConfig) -> None:
         trainer.train()
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model.to(device)
 
         test_metrics, y_true, y_pred = evaluate_model_on_loader(
             model,
@@ -240,11 +255,15 @@ def main(cfg: DictConfig) -> None:
             mlflow.log_artifact(str(error_path))
             mlflow.log_artifact(str(robustness_path))
 
-            mlflow.transformers.log_model(
-                transformers_model=model,
-                artifact_path="model",
-                tokenizer=tokenizer,
-            )
+            # Save model + tokenizer in HuggingFace format so that
+            # DistilBertForSequenceClassification.from_pretrained() and
+            # DistilBertTokenizerFast.from_pretrained() work directly on
+            # the downloaded artifact path in dl_demonstration.py.
+            hf_model_dir = tmp_path / "hf_model"
+            hf_model_dir.mkdir()
+            model.save_pretrained(hf_model_dir)
+            tokenizer.save_pretrained(hf_model_dir)
+            mlflow.log_artifacts(str(hf_model_dir), artifact_path="model")
 
         run_id = mlflow.active_run().info.run_id
         tag_best_run_as_prd(cfg.mlflow.experiment_name, run_id)

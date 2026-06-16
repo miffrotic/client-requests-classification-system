@@ -43,7 +43,6 @@ def predict_intents(text: str, threshold: float = THRESHOLD) -> str:
         id2label[class_idx] for class_idx, score in enumerate(probabilities) if score >= threshold
     ]
 
-    # если предсказание необходимо, но ни один класс не пробил порог
     # if not predicted_labels:
     #     max_prob = max(probabilities)
     #     predicted_labels = [

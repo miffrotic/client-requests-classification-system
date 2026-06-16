@@ -1,13 +1,3 @@
-"""Async-клиент FastAPI-сервиса классификации интентов.
-
-Инкапсулирует JWT-авторизацию (login + автоматический refresh по 401)
-и единственный публичный метод ``classify(text)`` — чтобы бот мог получить
-интент пользователя до передачи запроса LLM-агенту.
-
-Если сервис классификации недоступен, методы возвращают ``None`` —
-вызывающий код решает, как деградировать.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -22,11 +12,6 @@ logger = logging.getLogger(__name__)
 
 
 class IntentClient:
-    """Тонкий клиент над эндпоинтом ``/dl/intent/forward``.
-
-    Держит свой собственный ``httpx.AsyncClient`` и кешированный access-токен.
-    Один экземпляр создаётся на всё время жизни бота.
-    """
 
     _MAX_ATTEMPTS: Final[int] = 2
 
@@ -50,7 +35,6 @@ class IntentClient:
         self._access_token: str | None = None
 
     async def _login(self) -> bool:
-        """Получить новый JWT-токен. Возвращает ``True`` при успехе."""
         try:
             logger.info("IntentClient: logging in at %s", self._login_url)
             response = await self._client.post(
@@ -73,15 +57,6 @@ class IntentClient:
         return True
 
     async def classify(self, text: str) -> dict[str, Any] | None:
-        """Вернуть результат классификации интента или ``None`` при ошибке.
-
-        Args:
-            text: Исходное сообщение пользователя.
-
-        Returns:
-            Словарь с ответом API (как минимум поле ``intents``) либо ``None``,
-            если сервис недоступен / не авторизовались / вернул ошибку.
-        """
         payload = {"message": text}
 
         for attempt in range(self._MAX_ATTEMPTS):
@@ -122,12 +97,10 @@ class IntentClient:
         return None
 
     async def close(self) -> None:
-        """Корректно закрыть HTTP-клиент."""
         await self._client.aclose()
 
 
 def build_default_intent_client() -> IntentClient:
-    """Собрать ``IntentClient`` из настроек проекта."""
     login_path: str = settings.app.PUBLIC_URLS["login"]
     return IntentClient(
         api_url=settings.bot.API_URL,

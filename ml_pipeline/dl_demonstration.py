@@ -39,10 +39,19 @@ def main(cfg: DictConfig) -> None:
     print(f"Using PRD model: run_id={run_id}, version={version}, weighted_f1={weighted_f1}")
     print(f"Input text: {text}")
 
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        model_path = mlflow.artifacts.download_artifacts(run_id=run_id, artifact_path="model", dst_path=tmp_dir)
+    # Download into a directory that outlives the TemporaryDirectory context so
+    # that model files are present while the model objects are in use.
+    tmp_dir_obj = tempfile.TemporaryDirectory()
+    tmp_dir = tmp_dir_obj.name
+    try:
+        model_path = mlflow.artifacts.download_artifacts(
+            run_id=run_id, artifact_path="model", dst_path=tmp_dir
+        )
         model = DistilBertForSequenceClassification.from_pretrained(model_path)
         tokenizer = DistilBertTokenizerFast.from_pretrained(model_path)
+    finally:
+        # Weights are already loaded into RAM; the directory can be cleaned up.
+        tmp_dir_obj.cleanup()
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model.to(device)

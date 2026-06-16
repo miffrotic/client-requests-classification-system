@@ -39,6 +39,42 @@ def load_split_csv(path: str | Path, text_column: str, label_column: str) -> tup
     return texts, labels
 
 
+def load_xy_split_csvs(
+    x_path: str | Path,
+    y_path: str | Path,
+    text_column: str,
+    label_column: str,
+) -> tuple[list[str], list[list[str]]]:
+    """Load texts and labels from separate X and y CSV files.
+
+    Supports the pre-existing ``ml_base/data_split/`` layout where features
+    and labels are stored in separate files (e.g. ``X_train.csv`` /
+    ``y_train.csv``).
+
+    Args:
+        x_path:       Path to the features CSV (must contain ``text_column``).
+        y_path:       Path to the labels CSV (must contain ``label_column``).
+        text_column:  Name of the text column in the X file.
+        label_column: Name of the label column in the y file.
+
+    Returns:
+        Tuple of (texts, labels) ready for ``IntentDataset``.
+    """
+    x_df = pd.read_csv(x_path)
+    y_df = pd.read_csv(y_path)
+
+    if len(x_df) != len(y_df):
+        msg = (
+            f"Row count mismatch: {x_path} has {len(x_df)} rows "
+            f"but {y_path} has {len(y_df)} rows."
+        )
+        raise ValueError(msg)
+
+    texts = x_df[text_column].fillna("").astype(str).tolist()
+    labels = [parse_intent_value(value) for value in y_df[label_column].tolist()]
+    return texts, labels
+
+
 def fit_multilabel_binarizer(train_labels: list[list[str]]) -> MultiLabelBinarizer:
     mlb = MultiLabelBinarizer()
     mlb.fit(train_labels)

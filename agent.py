@@ -1,15 +1,3 @@
-"""LangChain-агент на Gemini 1.5 Flash — Customer Support Analyzer.
-
-За один вызов LLM:
-  * классифицирует интент обращения;
-  * определяет тональность (вкл. отдельный класс ``Critical/Angry``);
-  * извлекает сущности (номер заказа, адрес, телефон);
-  * формирует готовый ответ пользователю на английском.
-
-Всё это возвращается как объект :class:`schemas.CustomerRequestAnalysis`
-благодаря ``ChatGoogleGenerativeAI.with_structured_output``.
-"""
-
 from __future__ import annotations
 
 import logging
@@ -31,7 +19,7 @@ load_dotenv(Path(__file__).parent / ".env")
 GEMINI_API_KEY: Final[str | None] = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise RuntimeError(
-        "GEMINI_API_KEY не найден. Добавьте его в .env проекта.",
+        "GEMINI_API_KEY not found. Check your .env file.",
     )
 
 GEMINI_MODEL: Final[str] = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
@@ -107,18 +95,6 @@ async def analyze_request(
     user_message: str,
     intent_hint: str | None = None,
 ) -> CustomerRequestAnalysis | None:
-    """Прогнать сообщение через LLM и вернуть structured-разбор.
-
-    Args:
-        user_message: Сырое текстовое сообщение клиента из Telegram.
-        intent_hint:  Метка интента, полученная от внешнего классификатора
-                      (FastAPI ``/dl/intent/forward``). Опциональна.
-
-    Returns:
-        Заполненный объект :class:`CustomerRequestAnalysis` либо ``None``,
-        если LLM упал/вернул некорректный ответ — вызывающий код решает,
-        как деградировать.
-    """
     try:
         result = await _chain.ainvoke(
             {

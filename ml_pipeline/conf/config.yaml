@@ -1,16 +1,17 @@
 seed: 42
 
+# Existing pre-split CSVs from ml_base/data_split/.
+# Paths are relative to ml_pipeline/ (the script's directory).
+# X_*.csv must have an "instruction" column; y_*.csv must have an "intent" column.
 data:
-  source_path: "../augmented_customer_support_dataset.parquet"
-  train_data: "data/train.csv"
-  val_data: "data/val.csv"
-  test_data: "data/test.csv"
+  x_train: "../ml_base/data_split/X_train.csv"
+  y_train: "../ml_base/data_split/y_train.csv"
+  x_val:   "../ml_base/data_split/X_val.csv"
+  y_val:   "../ml_base/data_split/y_val.csv"
+  x_test:  "../ml_base/data_split/X_test.csv"
+  y_test:  "../ml_base/data_split/y_test.csv"
   text_column: "instruction"
   label_column: "intent"
-  split:
-    test_size: 0.15
-    val_size: 0.15
-    random_state: 42
 
 model:
   model_name: "distilbert-base-uncased"
@@ -19,11 +20,15 @@ model:
   threshold: 0.25
 
 training:
-  batch_size: 32
+  batch_size: 64          # for handling DistilBERT batch=64 at max_length=64
   epochs: 3
   learning_rate: 2.0e-5
   weight_decay: 0.01
   warmup_ratio: 0.1
+  fp16: true              # FP16 mixed precision - halves memory
+  bf16: false             # BF16 is also supported on Blackwell; set true + fp16: false if preferred
+  dataloader_num_workers: 4   # parallel data loading from CPU to GPU
+  dataloader_pin_memory: true # faster CPU→GPU transfer
 
 mlflow:
   tracking_uri: "http://127.0.0.1:5000"

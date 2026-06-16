@@ -206,6 +206,7 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Desktop Services Store
 .DS_Store
 
 # Certs
@@ -215,8 +216,13 @@ certs/
 safetensors_models/
 
 # ML pipeline artifacts
+outputs/
 ml_pipeline/data/
 ml_pipeline/outputs/
 ml_pipeline/.hydra/
 ml_pipeline/**/multirun/
 ml_pipeline/**/outputs/
+
+# RAG
+documents/
+chroma_db/
