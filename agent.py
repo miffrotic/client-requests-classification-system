@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import logging
 import os
+
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import Final
 
 from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_google_genai import ChatGoogleGenerativeAI
+from pydantic import ValidationError
 
 from schemas import CustomerRequestAnalysis
 
@@ -18,11 +21,10 @@ load_dotenv(Path(__file__).parent / ".env")
 
 GEMINI_API_KEY: Final[str | None] = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
-    raise RuntimeError(
-        "GEMINI_API_KEY not found. Check your .env file.",
-    )
+    msg = "GEMINI_API_KEY not found. Check your .env file."
+    raise RuntimeError(msg)
 
-GEMINI_MODEL: Final[str] = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_MODEL: Final[str] = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
 
 _SYSTEM_PROMPT: Final[str] = (
@@ -89,19 +91,34 @@ _llm = ChatGoogleGenerativeAI(
 
 _structured_llm = _llm.with_structured_output(CustomerRequestAnalysis)
 _chain = _prompt | _structured_llm
+AnalysisDraftCallback = Callable[[str], Awaitable[None]]
 
 
-async def analyze_request(
-    user_message: str,
-    intent_hint: str | None = None,
-) -> CustomerRequestAnalysis | None:
+def _coerce_analysis(value: object) -> CustomerRequestAnalysis | None:
+    if isinstance(value, CustomerRequestAnalysis):
+        return value
+    if isinstance(value, dict):
+        try:
+            return CustomerRequestAnalysis.model_validate(value)
+        except ValidationError:
+            return None
+    return None
+
+
+def _extract_ai_response_text(value: object) -> str | None:
+    analysis = _coerce_analysis(value)
+    if analysis is not None:
+        return analysis.ai_response_text
+    if isinstance(value, dict):
+        raw = value.get("ai_response_text")
+        return str(raw) if raw is not None else None
+    raw = getattr(value, "ai_response_text", None)
+    return str(raw) if raw is not None else None
+
+
+async def _invoke_analysis(payload: dict[str, str]) -> CustomerRequestAnalysis | None:
     try:
-        result = await _chain.ainvoke(
-            {
-                "input": user_message,
-                "intent_hint": intent_hint or "not provided",
-            },
-        )
+        result = await _chain.ainvoke(payload)
     except Exception:
         logger.exception("LLM analyzer invocation failed")
         return None
@@ -115,3 +132,46 @@ async def analyze_request(
         return None
 
     return result
+
+
+async def _stream_analysis(
+    payload: dict[str, str],
+    on_ai_response: AnalysisDraftCallback,
+) -> CustomerRequestAnalysis | None:
+    latest_response = ""
+    streamed_result: CustomerRequestAnalysis | None = None
+
+    try:
+        async for chunk in _chain.astream(payload):
+            candidate = _coerce_analysis(chunk)
+            if candidate is not None:
+                streamed_result = candidate
+
+            ai_response_text = _extract_ai_response_text(chunk)
+            if ai_response_text and ai_response_text != latest_response:
+                latest_response = ai_response_text
+                await on_ai_response(ai_response_text)
+    except Exception:
+        logger.exception("LLM analyzer streaming failed")
+        return await _invoke_analysis(payload)
+
+    if streamed_result is not None:
+        return streamed_result
+
+    return await _invoke_analysis(payload)
+
+
+async def analyze_request(
+    user_message: str,
+    intent_hint: str | None = None,
+    on_ai_response: AnalysisDraftCallback | None = None,
+) -> CustomerRequestAnalysis | None:
+    payload = {
+        "input": user_message,
+        "intent_hint": intent_hint or "not provided",
+    }
+
+    if on_ai_response is None:
+        return await _invoke_analysis(payload)
+
+    return await _stream_analysis(payload, on_ai_response)

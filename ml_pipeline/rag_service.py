@@ -2,10 +2,13 @@ from __future__ import annotations
 
 import logging
 import os
+
+from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Final
 
 import torch
+
 from dotenv import load_dotenv
 from langchain_chroma import Chroma
 from langchain_classic.chains import create_retrieval_chain
@@ -43,10 +46,16 @@ _DEFAULT_GEMINI_MODEL: Final[str] = "gemini-2.5-flash"
 load_dotenv(_PROJECT_ROOT / ".env")
 
 
+def _merge_streamed_answer(current: str, incoming: str) -> str:
+    if incoming.startswith(current):
+        return incoming
+    return f"{current}{incoming}"
+
+
 def _resolve_google_api_key() -> str:
-    api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+    api_key = os.getenv("GEMINI_API_KEY")
     if not api_key:
-        msg = "GOOGLE_API_KEY (или GEMINI_API_KEY) не найден в .env"
+        msg = "GEMINI_API_KEY not found in .env"
         raise RuntimeError(msg)
     return api_key
 
@@ -129,6 +138,25 @@ class StorePolicyRAG:
         result = self._qa_chain.invoke({"input": query})
         answer = result.get("answer", "")
         return str(answer).strip()
+
+    async def ask_stream(self, query: str) -> AsyncIterator[str]:
+        if self._qa_chain is None:
+            msg = "Index is not ready. Call build_or_load_index() first."
+            raise RuntimeError(msg)
+
+        answer = ""
+
+        async for chunk in self._qa_chain.astream({"input": query}):
+            if not isinstance(chunk, dict):
+                continue
+            raw_answer = chunk.get("answer")
+            if raw_answer is None:
+                continue
+            incoming = str(raw_answer)
+            if not incoming:
+                continue
+            answer = _merge_streamed_answer(answer, incoming)
+            yield answer.strip()
 
 
 

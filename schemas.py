@@ -26,7 +26,7 @@ class CustomerRequestAnalysis(BaseModel):
     order_number: Optional[str] = Field(
         default=None,
         description=(
-            "Order number extracted from the user's message (e.g. 'ORD-1001'). "
+            "Order number extracted from the user's message (e.g. '1001'). "
             "Null if no order number is mentioned. Do not invent or guess it."
         ),
     )

@@ -47,22 +47,22 @@ files = [
 
 [[package]]
 name = "aiogram"
-version = "3.26.0"
+version = "3.29.0"
 description = "Modern and fully asynchronous framework for Telegram Bot API"
 optional = false
 python-versions = "<3.15,>=3.10"
 groups = ["main"]
 files = [
-    {file = "aiogram-3.26.0-py3-none-any.whl", hash = "sha256:dd8ea7feb2409953ad1424564355926207af90bb2204e37be7373fe6de201016"},
-    {file = "aiogram-3.26.0.tar.gz", hash = "sha256:12fa1bce9c8cee0f1214f5e3f91bb631586c4503854d6138dacbdd7e7dc1020c"},
+    {file = "aiogram-3.29.0-py3-none-any.whl", hash = "sha256:f4b2c39d89c44e37998b4b4a8510d6914fc24f3d31125d6b3f6ea9589e67ec85"},
+    {file = "aiogram-3.29.0.tar.gz", hash = "sha256:17be0061174fd5b3aa494537f166c2f147b983ebef60d9ede2a3e8837af9c01e"},
 ]
 
 [package.dependencies]
 aiofiles = ">=23.2.1,<26.0"
-aiohttp = ">=3.9.0,<3.14"
+aiohttp = ">=3.9.0,<3.15"
 certifi = ">=2023.7.22"
 magic-filter = ">=1.0.12,<1.1"
-pydantic = ">=2.4.1,<2.13"
+pydantic = ">=2.4.1,<2.14"
 typing-extensions = ">=4.7.0,<=5.0"
 
 [package.extras]
@@ -70,8 +70,8 @@ cli = ["aiogram-cli (>=1.1.0,<2.0.0)"]
 docs = ["furo (>=2024.8.6,<2024.9.0)", "markdown-include (>=0.8.1,<0.9.0)", "pygments (>=2.18.0,<2.19.0)", "pymdown-extensions (>=10.3,<11.0)", "sphinx (>=8.0.2,<8.1.0)", "sphinx-autobuild (>=2024.9.3,<2024.10.0)", "sphinx-copybutton (>=0.5.2,<0.6.0)", "sphinx-intl (>=2.2.0,<2.3.0)", "sphinx-substitution-extensions (>=2024.8.6,<2024.9.0)", "sphinxcontrib-towncrier (>=0.4.0a0,<0.5.0)", "towncrier (>=24.8.0,<24.9.0)"]
 fast = ["aiodns (>=3.0.0)", "uvloop (>=0.17.0) ; (sys_platform == \"darwin\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\" and python_version < \"3.13\"", "uvloop (>=0.21.0) ; (sys_platform == \"darwin\" or sys_platform == \"linux\") and platform_python_implementation != \"PyPy\" and python_version >= \"3.13\""]
 i18n = ["babel (>=2.13.0,<3)"]
-mongo = ["motor (>=3.3.2,<3.8)", "pymongo (>4.5,<4.16)"]
-proxy = ["aiohttp-socks (>=0.10.1,<0.11.0)"]
+mongo = ["motor (>=3.3.2,<3.8)", "pymongo (>4.5,<4.18)"]
+proxy = ["aiohttp-socks (>=0.10.1,<1.12.0)"]
 redis = ["redis[hiredis] (>=6.2.0,<8)"]
 signature = ["cryptography (>=46.0.0)"]
 
@@ -7776,4 +7776,4 @@ cffi = ["cffi (>=1.17,<2.0) ; platform_python_implementation != \"PyPy\" and pyt
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.12,<3.15"
-content-hash = "02c9c5647fe769afc43e49ba3e8be4e8a561d4ae0cf55e45d0311ff4de1252ce"
+content-hash = "86be7b7250050fde52c8604f27e199bb4187ae2f3f1d1c7dd02d136e7ef3788f"
